@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package org.twins.horn.notify;
+
+option java_package = "org.twins.horn.notify";
+option java_outer_classname = "TwinsNotifyProto";
+
+
+message InitializeNotificationRequest {
+  string client_id = 1;
+}
+
+message TwinsNotifyResponse {
+  string update_id = 1;
+  string twin_id = 2;
+  repeated string client_ids = 3; // List of client IDs that are subscribed to this twin
+  string timestamp = 4; // ISO 8601 format
+  ResponseStatus status = 5;
+}
+
+message FinalizeNotificationRequest {
+  string client_id = 1;
+}
+
+
+message FinalizeNotificationResponse {
+  ResponseStatus status = 1;
+}
+
+enum ResponseStatus {
+  SUCCESS = 0;
+  ERROR = 1;
+  PARTIAL = 2;
+}
+

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package org.twins.horn.subscribe;
+
+option java_package = "org.twins.horn.subscribe";
+option java_outer_classname = "TwinfaceSubscribeProto";
+
+service TwinfaceSubscribeService {
+  rpc GetDataUpdates(TwinfaceSubscribeRequest) returns (stream TwinfaceSubscribeUpdate);
+}
+
+message TwinfaceSubscribeRequest {
+  string client_id = 1; // User ID for authentication
+  repeated TwinEventType event_types = 2;
+}
+
+message TwinfaceSubscribeUpdate {
+  string update_id = 1;
+  TwinEventType event_type = 2;
+  string timestamp = 3;
+  repeated string updated_twin_ids = 4;
+  UpdateStatus status = 5;
+}
+
+enum UpdateStatus {
+  SUCCESS = 0;
+  ERROR = 1;
+  PARTIAL = 2;
+}
+
+enum TwinEventType {
+    TWIN_UPDATE = 0;
+}

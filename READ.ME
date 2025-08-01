@@ -1,0 +1,185 @@
+# TwinHorn
+
+TwinHorn is a lightweight backend **Digital-Twin Hub**.  It maintains the relationship between
+physical/virtual assets ( _twins_ ) and their client applications, delivers
+time-critical notifications, and validates OAuth2 access tokens for secure, low-latency
+communication.
+
+TwinHorn is intentionally _narrow in scope_: it focuses exclusively on
+association management, authentication, and message fan-out, delegating heavy
+business logic to external services.  This makes TwinHorn easy to embed in new
+or existing IIoT / Industry 4.0 platforms as a dedicated twin connectivity
+layer.
+
+---
+
+## Core Capabilities
+
+• **Notification Router** – Receives events (Kafka/Rabbit/AMQP ready) and
+  forwards them to subscribed clients through a persistent gRPC stream or REST
+  webhook.
+
+• **Token Introspection** – Verifies OAuth2/OIDC access tokens against an
+  authorization server (RFC 7662).
+
+• **Pluggable Service Layer** – Clean, Spring-based ports for adding business
+  rules without touching transport logic.
+
+---
+
+## High-Level Architecture
+
+```
+┌────────────┐            gRPC           ┌────────────┐
+│  Clients   │◀─────────────────────────��│  TwinHorn  │
+└────────────┘                           │            │
+                                         │ Streaming │
+                                         │  Server   │
+                                         └────┬──────┘
+                                              │ RabbitMQ
+                                              ▼
+                                         ┌────────────┐
+                                         │   Twins    │
+                                         └────────────┘
+```
+
+1. **gRPC API** – CRUD + batch association.
+2. **Streaming Server** – persistent bidirectional gRPC for low-latency pushes.
+3. **RabbitMQ Consumer** – consumes twin events and relays them.
+4. **RDBMS** – stores twins ↔ clients relations, connection metadata, and audit.
+
+---
+
+## Technology Stack
+
+| Layer              | Technology                                    |
+|--------------------|-----------------------------------------------|
+| Language           | Java 17+                                       |
+| Framework          | Spring Boot, Spring Security                   |
+| Build System       | Gradle (Kotlin DSL)                            |
+| Transport          | gRPC, Spring MVC (REST)                        |
+| Persistence        | PostgreSQL (any JDBC RDBMS works)              |
+| Authentication     | OAuth2 / OpenID Connect (token introspection)  |
+| Containerisation   | Docker / Docker-Compose                        |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+* **Java 17** or newer ( JDK )
+* **Gradle 7.x** – a wrapper is included, no need for a global install
+* **Docker** – optional, for running PostgreSQL locally
+
+> All commands below are executed from the project root.
+
+### 1. Clone the repository
+
+```bash
+$ git clone <repo-url>
+$ cd twinhorn
+```
+
+### 2. Local database (optional but recommended)
+
+```bash
+$ docker compose -f docker/postgres.compose.yml up -d
+```
+
+The compose file starts PostgreSQL 15 with default credentials `twins/twins` on
+port 5432.  Adjust `src/main/resources/application.properties` accordingly if
+you use another setup.
+
+### 3. Configure application properties
+
+```properties
+# src/main/resources/application.properties
+
+```
+
+### 4. Build and test
+
+```bash
+# clean build, run unit tests, generate JAR
+$ ./gradlew clean build
+```
+
+The artefact is placed in `build/libs/twinhorn-<version>.jar`.
+
+### 5. Run locally
+
+```bash
+# Method A – via Gradle (dev-friendly reload)
+$ ./gradlew bootRun
+
+# Method B – run the fat JAR
+$ java -jar build/libs/twinhorn-<version>.jar
+```
+
+API docs are exposed under `http://localhost:8080/swagger-ui.html` (if the
+SpringDoc dependency is kept).
+
+---
+
+
+## gRPC Streaming
+
+The gRPC stubs are generated from `src/main/proto/*.proto`.  Java/Kotlin and
+Go examples are included in `samples/` (if you enabled stub generation).
+
+---
+
+## Gradle Tasks Cheatsheet
+
+| Command                    | Purpose                              |
+|----------------------------|--------------------------------------|
+| `./gradlew build`          | Compile, test, package JAR           |
+| `./gradlew bootRun`        | Run Spring Boot with hot reload      |
+| `./gradlew test`           | Execute JUnit & Mockito tests        |
+| `./gradlew jibDockerBuild` | Build container image via Jib        |
+| `./gradlew spotlessApply`  | Auto-format code with Spotless       |
+
+---
+
+## Docker Image
+
+A reproducible image can be built without Dockerfile using
+[Google Jib](https://github.com/GoogleContainerTools/jib):
+
+```bash
+$ ./gradlew jibDockerBuild \
+           -Djib.to.image=twinhorn:latest
+$ docker run -p 8080:8080 twinhorn:latest
+```
+
+---
+
+## Testing
+
+
+
+---
+
+## Extending TwinHorn
+
+1. **Business Logic** – implement your rules inside the `org.twins.horn.service.*`
+   packages and expose them through the facade interfaces.
+2. **New Transports** – add an adapter (e.g., MQTT) following the existing
+   service contracts.
+3. **Database** – Flyway or Liquibase migrations can be added under
+   `src/main/resources/db/migration`.
+4. **Broker** – replace or add consumers in `service.queue` for Kafka, AWS SQS,
+   etc.
+
+---
+
+## Contributing
+
+
+
+---
+
+## License
+
+
