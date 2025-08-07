@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Resolve log directory (default to ./logs if not provided) -->
+    <property name="LOGS_DIR" value="./logs" />
+
+    <!-- Pattern used by both console and file appenders -->
+    <property name="LOG_PATTERN"
+              value="%date{ISO8601}|%-5level|%-20.20thread|%-40logger{40}|%-20.20X{session}|%-20.20X{controller}| %X{logPrefix}%X{traceTree}%n" />
+
+    <!-- Console appender for local debugging -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Rolling file appender: daily rotation + 360-day history -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS_DIR}/twinhorn.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- zipped archive filename pattern -->
+            <fileNamePattern>${LOGS_DIR}/twinshorn-%d{yyyy-MM-dd}.zip</fileNamePattern>
+            <!-- Retain archives for 360 days -->
+            <maxHistory>360</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="FILE" />
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

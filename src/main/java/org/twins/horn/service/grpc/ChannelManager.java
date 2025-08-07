@@ -7,16 +7,16 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Manages a single gRPC {@link ManagedChannel} configured for client-side use.
- *
+ * <p>
  * Features:
- *  • Builds a channel for the supplied target with 30 s keep-alive pings and plaintext transport.
- *  • Stores the channel in a final field for safe, application-wide reuse.
- *  • Provides a hint for future tuning through {@code maxConcurrentStreams}.
- *
+ * • Builds a channel for the supplied target with 30 s keep-alive pings and plaintext transport.
+ * • Stores the channel in a final field for safe, application-wide reuse.
+ * • Provides a hint for future tuning through {@code maxConcurrentStreams}.
+ * <p>
  * Usage:
- *  ChannelManager mgr = new ChannelManager("host:port");
- *  ManagedChannel ch = mgr.getChannel();
- *
+ * ChannelManager mgr = new ChannelManager("host:port");
+ * ManagedChannel ch = mgr.getChannel();
+ * <p>
  * No explicit shutdown is performed here; callers are responsible for invoking
  * {@code ManagedChannel#shutdown()} or {@code ManagedChannel#shutdownNow()} when finished.
  */

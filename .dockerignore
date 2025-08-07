@@ -1,0 +1,27 @@
+# Ignore everything by default
+*
+# Allow required files
+!gradle/**
+!gradlew
+!gradlew.bat
+!build.gradle.kts
+!settings.gradle.kts
+!src/**
+!Dockerfile
+!docker-compose.yml
+!README*
+!LICENSE
+
+# Ignore Gradle build output
+build/
+.gradle/
+
+# Ignore IDE configs
+.idea/
+.qodo/
+*.iml
+
+# Other VCS and OS files
+.git
+.gitignore
+.DS_Store

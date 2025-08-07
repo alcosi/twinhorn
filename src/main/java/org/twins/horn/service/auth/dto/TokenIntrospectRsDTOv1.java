@@ -4,9 +4,9 @@ import lombok.Data;
 
 @Data
 public class TokenIntrospectRsDTOv1 {
-    public String active;
-    public String clientId;
-    public Long exp;
+    private String active;
+    private String clientId;
+    private Long exp;
 
     //todo - create bean via swagger
 }

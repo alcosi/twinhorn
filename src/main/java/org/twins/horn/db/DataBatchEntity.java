@@ -1,24 +1,16 @@
 package org.twins.horn.db;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * JPA entity that represents a batch of data uploaded by a client session.
- *
+ * <p>
  * Corresponding PostgreSQL table (jsonb used for batch_data):
  * <pre>
  * data_batch(

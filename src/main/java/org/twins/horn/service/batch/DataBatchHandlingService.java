@@ -11,7 +11,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
+/*
+* The batch logic is not used now but can be useful for future use.
+ */
 @Service
 public class DataBatchHandlingService {
     @Autowired

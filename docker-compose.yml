@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: twins
+      POSTGRES_USER: twins
+      POSTGRES_PASSWORD: twins
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pwd
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      # Database configuration (overrides application.properties)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/twins
+      SPRING_DATASOURCE_USERNAME: twins
+      SPRING_DATASOURCE_PASSWORD: twins
+
+      # RabbitMQ configuration
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: user
+      SPRING_RABBITMQ_PASSWORD: pwd
+
+      # gRPC server port (if you want to override)
+      GRPC_SERVER_PORT: 6565
+
+      # Optional – points to an external introspection service
+      TWINS_INTROSPECTION_URL: http://localhost:8080/twins-introspection
+    ports:
+
+      - "6565:6565" # gRPC
+    restart: unless-stopped
+
+volumes:
+  db-data:

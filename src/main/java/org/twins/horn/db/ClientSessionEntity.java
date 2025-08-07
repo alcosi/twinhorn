@@ -1,19 +1,19 @@
 package org.twins.horn.db;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * JPA entity representing a client session.
- *
+ * <p>
  * Table structure:
  * <pre>
  * client_session(
@@ -35,9 +35,6 @@ public class ClientSessionEntity {
     @Id
     @Column(name = "client_id", nullable = false, updatable = false)
     private UUID clientId;
-
-    @Column(name = "token", nullable = false)
-    private String token;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

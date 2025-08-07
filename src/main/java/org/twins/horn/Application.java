@@ -4,6 +4,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.twins.horn.service.auth.TwinsTokenIntrospectService;
 import org.twins.horn.service.grpc.TwinfaceDataStreamingServer;
 import org.twins.horn.service.grpc.TwinfaceGrpcNotifier;
 import org.twins.horn.service.grpc.security.AuthInterceptor;
@@ -25,10 +26,13 @@ import java.io.IOException;
  *       queue notifications to connected gRPC clients while securing calls via
  *       {@link AuthInterceptor}.</li>
  * </ul>
- *
+ * <p>
  * The application terminates only when the gRPC server is shut down.
  */
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @SpringBootApplication(scanBasePackages = "org.twins.horn")
+@EnableScheduling
 public class Application {
 
     public static void main(String[] args) {
@@ -45,14 +49,21 @@ public class Application {
     }
 
     @Bean
-    public void TwinfaceDataStreamingServer(){
-        TwinfaceGrpcNotifier twinfaceGrpcNotifier = new TwinfaceGrpcNotifier();
-        final TwinfaceDataStreamingServer server = new TwinfaceDataStreamingServer(twinfaceGrpcNotifier, new TwinsNotificationsConsumer(twinfaceGrpcNotifier), new AuthInterceptor());
+    public AuthInterceptor authInterceptor (TwinsTokenIntrospectService twinsTokenIntrospectService) {
+        // Create the AuthInterceptor bean for gRPC authentication
+        return new AuthInterceptor(twinsTokenIntrospectService);
+    }
+
+    @Bean
+    public TwinfaceDataStreamingServer twinfaceDataStreamingServer(                                                                  TwinsTokenIntrospectService introspectService) {
+        // Build the gRPC server wrapper
+        TwinfaceDataStreamingServer server = new TwinfaceDataStreamingServer(
+                authInterceptor(introspectService));
         try {
             server.start();
-            server.server.awaitTermination();
-        } catch (InterruptedException | IOException e) {//todo - handle properly
-            throw new RuntimeException(e);
+        } catch (IOException e) { //todo - handle properly
+            throw new RuntimeException("Failed to start gRPC server", e);
         }
+        return server;
     }
 }

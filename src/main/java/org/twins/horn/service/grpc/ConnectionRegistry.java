@@ -1,8 +1,7 @@
 package org.twins.horn.service.grpc;
 
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.twins.horn.subscribe.TwinfaceSubscribeProto;
 
 import java.util.List;
@@ -34,9 +33,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * <p>All methods are safe to invoke concurrently from multiple threads.
  */
+@Slf4j
 public class ConnectionRegistry {
-    private static final Logger logger = LoggerFactory.getLogger(ConnectionRegistry.class);
-
     private static final ConcurrentHashMap<String, CopyOnWriteArrayList<StreamObserver<TwinfaceSubscribeProto.TwinfaceSubscribeUpdate>>> observers =
             new ConcurrentHashMap<>();
 
@@ -45,7 +43,7 @@ public class ConnectionRegistry {
 
     public static void add(String clientId, StreamObserver<TwinfaceSubscribeProto.TwinfaceSubscribeUpdate> observer) {
         observers.computeIfAbsent(clientId, k -> new CopyOnWriteArrayList<>()).add(observer);
-        logger.debug("Added observer for client: {}, total observers: {}", clientId, 
+        log.debug("Added observer for client: {}, total observers: {}", clientId,
                 observers.getOrDefault(clientId, new CopyOnWriteArrayList<>()).size());
     }
 
@@ -53,19 +51,22 @@ public class ConnectionRegistry {
         List<StreamObserver<TwinfaceSubscribeProto.TwinfaceSubscribeUpdate>> list = observers.get(clientId);
         if (list != null) {
             list.remove(observer);
-            logger.debug("Removed observer for client: {}, remaining observers: {}", clientId, list.size());
+            log.debug("Removed observer for client: {}, remaining observers: {}", clientId, list.size());
 
             if (list.isEmpty()) {
                 observers.remove(clientId);
-                logger.debug("No more observers for client: {}, removed entry", clientId);
+                log.debug("No more observers for client: {}, removed entry", clientId);
             }
         }
     }
 
+    /**
+     * Sends an update to all observers of the given client.
+     */
     public static void broadcast(String clientId, TwinfaceSubscribeProto.TwinfaceSubscribeUpdate update) {
         List<StreamObserver<TwinfaceSubscribeProto.TwinfaceSubscribeUpdate>> list = observers.get(clientId);
         if (list != null) {
-            logger.debug("Broadcasting update to {} observers for client: {}", list.size(), clientId);
+            log.debug("Broadcasting update to {} observers for client: {}", list.size(), clientId);
 
             // iterate over snapshot to prevent ConcurrentModification
             int successful = 0;
@@ -74,15 +75,15 @@ public class ConnectionRegistry {
                     obs.onNext(update);
                     successful++;
                 } catch (Exception e) {
-                    logger.warn("Failed to send update to client {}: {}", clientId, e.getMessage());
+                    log.error("Failed to send update to client {}: {}", clientId, e.getMessage());
                     // In a production system, we should remove the failed observer
-                    // remove(clientId, obs);
+                    remove(clientId, obs);
                 }
             }
-            logger.debug("Successfully sent updates to {}/{} observers for client: {}", 
+            log.debug("Successfully sent updates to {}/{} observers for client: {}",
                     successful, list.size(), clientId);
         } else {
-            logger.debug("No observers found for client: {}", clientId);
+            log.debug("No observers found for client: {}", clientId);
         }
     }
 }

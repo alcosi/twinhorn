@@ -15,7 +15,7 @@ repositories {
 }
 
 val grpcVersion = "1.63.0"
-val protobufVersion = "3.25.3"
+val protobufVersion = "4.28.2"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
@@ -32,11 +32,15 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Spring & Mockito testing utilities
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.mockito:mockito-inline:5.2.0")
 
     // gRPC & Protobuf
     implementation("io.grpc:grpc-netty-shaded:${grpcVersion}")
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")
     implementation("io.grpc:grpc-stub:${grpcVersion}")
+    testImplementation("io.grpc:grpc-inprocess:${grpcVersion}")
     implementation("com.google.protobuf:protobuf-java:${protobufVersion}")    // For Java 9+ compatibility
     implementation("org.apache.tomcat:annotations-api:6.0.53")
     implementation("org.springframework.boot:spring-boot-starter-web") // For RestTemplate and @Value

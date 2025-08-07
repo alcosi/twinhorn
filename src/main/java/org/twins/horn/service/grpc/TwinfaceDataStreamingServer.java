@@ -4,10 +4,11 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 import org.twins.horn.service.auth.dto.TokenIntrospectRsDTOv1;
 import org.twins.horn.service.grpc.security.AuthInterceptor;
 import org.twins.horn.service.queue.TwinsNotificationsConsumer;
@@ -19,7 +20,8 @@ import org.twins.horn.subscribe.TwinfaceSubscribeServiceGrpc;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -40,25 +42,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * </ul>
  * Instantiate the class via Spring and call {@link #start()} to begin serving.
  */
+@Slf4j
 @Service
 public class TwinfaceDataStreamingServer {
-    private static final Logger logger = LoggerFactory.getLogger(TwinfaceDataStreamingServer.class);
-
-    public Server server;
     private final TwinfaceSubscribeServiceImpl subscribeService;
-    private final TwinfaceGrpcNotifier grpcNotifier;
-    private final TwinsNotificationsConsumer notificationsConsumer;
     private final AuthInterceptor authInterceptor;
-
+    public Server server;
     @Value("${grpc.server.port:9090}")
     private int grpcServerPort;
 
-    public TwinfaceDataStreamingServer(
-            TwinfaceGrpcNotifier grpcNotifier,
-            TwinsNotificationsConsumer notificationsConsumer,
-            AuthInterceptor authInterceptor) {
-        this.grpcNotifier = grpcNotifier;
-        this.notificationsConsumer = notificationsConsumer;
+    public TwinfaceDataStreamingServer(AuthInterceptor authInterceptor) {
         this.authInterceptor = authInterceptor;
         this.subscribeService = new TwinfaceSubscribeServiceImpl();
     }
@@ -71,11 +64,11 @@ public class TwinfaceDataStreamingServer {
                 .build();
 
         server.start();
-        logger.info("gRPC server started on port {}", grpcServerPort);
+        log.info("gRPC server started on port {}", grpcServerPort);
 
         // Graceful shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutting down gRPC server...");
+            log.info("Shutting down gRPC server...");
             TwinfaceDataStreamingServer.this.stop();
         }));
     }
@@ -99,13 +92,13 @@ public class TwinfaceDataStreamingServer {
             String clientId = tokenInfo != null ? tokenInfo.getClientId()
                     : request.getClientId();   //todo - throw exception if clientId is not set
 
-            logger.info("Starting data stream for client: {}", clientId);
+            log.info("Starting data stream for client: {}", clientId);
 
             // Register this client to receive notifications
             ConnectionRegistry.add(clientId, responseObserver);
 
             // Optional – clean up when the stream terminates
-            ((ServerCallStreamObserver<TwinfaceSubscribeUpdate>)responseObserver).setOnCancelHandler(() ->
+            ((ServerCallStreamObserver<TwinfaceSubscribeUpdate>) responseObserver).setOnCancelHandler(() ->
                     ConnectionRegistry.remove(clientId, responseObserver));
 
 
@@ -119,9 +112,9 @@ public class TwinfaceDataStreamingServer {
 
             try {
                 responseObserver.onNext(initialUpdate);
-                logger.debug("Sent initial update to client: {}", clientId);
+                log.debug("Sent initial update to client: {}", clientId);
             } catch (Exception e) {
-                logger.error("Error sending initial update to client {}: {}", clientId, e.getMessage());
+                log.error("Error sending initial update to client {}: {}", clientId, e.getMessage());
                 // Will be handled by onError in client
                 responseObserver.onError(e);
             }
@@ -149,14 +142,10 @@ public class TwinfaceDataStreamingServer {
                 try {
                     responseObserver.onNext(update);
                 } catch (Exception e) {
-                    logger.error("Error sending update: {}", e.getMessage());
+                    log.error("Error sending update: {}", e.getMessage());
                     close();
                 }
             }
-        }
-
-        public void setCleanupTask(ScheduledFuture<?> task) {
-            this.cleanupTask = task;
         }
 
         public void close() {
@@ -167,54 +156,14 @@ public class TwinfaceDataStreamingServer {
                 try {
                     responseObserver.onCompleted();
                 } catch (Exception e) {
-                    logger.error("Error completing stream: {}", e.getMessage());
+                    log.error("Error completing stream: {}", e.getMessage());
                 }
                 ConnectionRegistry.remove(clientId, responseObserver);
             }
-        }
-
-        public boolean isActive() {
-            return active.get();
         }
 
         public String getClientId() {
             return clientId;
         }
     }
-
-
-  /*  @Override
-    public void getDataUpdates(TwinfaceSubscribeRequest request, StreamObserver<TwinfaceSubscribeUpdate> responseObserver) {
-        // 1. Extract token from metadata
-        String token = extractToken(); // TODO: implement extractToken from gRPC context
-        if (token == null) {
-            responseObserver.onError(Status.UNAUTHENTICATED.withDescription("Missing or invalid token").asRuntimeException());
-            return;
-        }
-
-        // 2. Validate token
-        boolean valid = false; // TODO: Use TwinsTokenIntrospectService to validate token
-        if (!valid) {
-            responseObserver.onError(Status.UNAUTHENTICATED.withDescription("Token validation failed").asRuntimeException());
-            return;
-        }
-
-        // 3. Register for notifications
-        // TODO: Use TwinsNotificationRequestProducer to subscribe to queue with token and event types
-
-        // 4. Stream updates from queue
-        try {
-            // TODO: Use TwinsNotificationsConsumer to receive updates and send via responseObserver.onNext(...)
-            // TODO: Handle client disconnects, errors, and reconnections
-        } catch (Exception e) {
-            responseObserver.onError(Status.INTERNAL.withDescription("Streaming error: " + e.getMessage()).asRuntimeException());
-        }
-    }
-
-    private String extractToken() {
-        // TODO: Implement extraction of token from gRPC metadata
-        return null;
-    }
-
-   */
 }

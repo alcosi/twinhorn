@@ -20,14 +20,21 @@ message TwinfaceSubscribeUpdate {
   string timestamp = 3;
   repeated string updated_twin_ids = 4;
   UpdateStatus status = 5;
+  // Optional – present only when status is not SUCCESS
+  string error_message = 6;
 }
 
+// Extended set of statuses to reflect validation and processing errors
 enum UpdateStatus {
   SUCCESS = 0;
-  ERROR = 1;
-  PARTIAL = 2;
+  GENERAL_ERROR = 1;          // Unspecified server-side failure
+  INPUT_DATA_ERROR = 2;       // Client sent malformed/invalid data
+  UNAUTHORIZED = 3;           // Token invalid or expired
+  INTERNAL_ERROR = 4;         // Internal services (RabbitMQ, Introspect, Streaming) failed – generic for front-end
 }
 
 enum TwinEventType {
     TWIN_UPDATE = 0;
+    TOKEN_EXPIRED_WARNING = 1;
+    CONNECTION_CLOSED = 2;
 }
