@@ -38,6 +38,30 @@ public class ConnectionRegistry {
     private static final ConcurrentHashMap<String, CopyOnWriteArrayList<StreamObserver<TwinfaceSubscribeProto.TwinfaceSubscribeUpdate>>> observers =
             new ConcurrentHashMap<>();
 
+    /**
+     * Broadcast an update to ALL connected clients. Useful for infrastructure-level
+     * heart-beats (e.g. transient errors) that are not bound to a particular client.
+     */
+    public static void broadcastAll(TwinfaceSubscribeProto.TwinfaceSubscribeUpdate update) {
+        observers.forEach((clientId, list) -> broadcast(clientId, update));
+    }
+
+    /**
+     * Closes all active streams with the provided gRPC error. Used for permanent
+     * infrastructure failures where the service cannot continue streaming.
+     */
+    public static void failAll(io.grpc.StatusRuntimeException statusError) {
+        observers.forEach((clientId, list) -> {
+            for (io.grpc.stub.StreamObserver<TwinfaceSubscribeProto.TwinfaceSubscribeUpdate> obs : list) {
+                try {
+                    obs.onError(statusError);
+                } catch (Exception ignore) {
+                }
+            }
+        });
+        observers.clear();
+    }
+
     private ConnectionRegistry() {
     }
 

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.twins.horn.exception.TwinhornException;
 import org.twins.horn.service.auth.dto.TokenIntrospectRsDTOv1;
 import org.twins.horn.service.grpc.security.AuthInterceptor;
 import org.twins.horn.service.queue.TwinsNotificationsConsumer;
@@ -85,38 +86,43 @@ public class TwinfaceDataStreamingServer {
         @Override
         public void getDataUpdates(TwinfaceSubscribeRequest request,
                                    StreamObserver<TwinfaceSubscribeUpdate> responseObserver) {
-
-            // Register this client to receive notifications
-
-            TokenIntrospectRsDTOv1 tokenInfo = AuthInterceptor.TOKEN_INFO_CTX_KEY.get();
-            String clientId = tokenInfo != null ? tokenInfo.getClientId()
-                    : request.getClientId();   //todo - throw exception if clientId is not set
-
-            log.info("Starting data stream for client: {}", clientId);
-
-            // Register this client to receive notifications
-            ConnectionRegistry.add(clientId, responseObserver);
-
-            // Optional – clean up when the stream terminates
-            ((ServerCallStreamObserver<TwinfaceSubscribeUpdate>) responseObserver).setOnCancelHandler(() ->
-                    ConnectionRegistry.remove(clientId, responseObserver));
-
-
-            // Send initial confirmation
-            TwinfaceSubscribeUpdate initialUpdate = TwinfaceSubscribeUpdate.newBuilder()
-                    .setUpdateId(UUID.randomUUID().toString())
-                    .setTimestamp(Instant.now().toString())
-                    .setStatus(TwinfaceSubscribeProto.UpdateStatus.SUCCESS)
-                    .setEventType(TwinfaceSubscribeProto.TwinEventType.TWIN_UPDATE)
-                    .build();
-
             try {
-                responseObserver.onNext(initialUpdate);
-                log.debug("Sent initial update to client: {}", clientId);
+                // Register this client to receive notifications
+                TokenIntrospectRsDTOv1 tokenInfo = AuthInterceptor.TOKEN_INFO_CTX_KEY.get();
+                if (tokenInfo == null || tokenInfo.getActive() == null || !tokenInfo.getActive().equals("true")) {
+                    log.error("Unauthorized access attempt to getDataUpdates");
+                    throw new TwinhornException(TwinhornException.TwinhornErrorType.UNAUTHORIZED, "Failed to introspect token");
+                }
+                String clientId = tokenInfo.getClientId();
+
+                log.info("Starting data stream for client: {}", clientId);
+
+                // Register this client to receive notifications
+                ConnectionRegistry.add(clientId, responseObserver);
+
+                // Optional – clean up when the stream terminates
+                ((ServerCallStreamObserver<TwinfaceSubscribeUpdate>) responseObserver).setOnCancelHandler(() ->
+                        ConnectionRegistry.remove(clientId, responseObserver));
+
+
+                // Send initial confirmation
+                TwinfaceSubscribeUpdate initialUpdate = TwinfaceSubscribeUpdate.newBuilder()
+                        .setUpdateId(UUID.randomUUID().toString())
+                        .setTimestamp(Instant.now().toString())
+                        .setStatus(TwinfaceSubscribeProto.UpdateStatus.SUCCESS)
+                        .setEventType(TwinfaceSubscribeProto.TwinEventType.TWIN_UPDATE)
+                        .build();
+
+                try {
+                    responseObserver.onNext(initialUpdate);
+                    log.debug("Sent initial update to client: {}", clientId);
+                } catch (Exception e) {
+                    log.error("Error sending initial update to client {}: {}", clientId, e.getMessage());
+                    // Will be handled by onError in client
+                    responseObserver.onError(e);
+                }
             } catch (Exception e) {
-                log.error("Error sending initial update to client {}: {}", clientId, e.getMessage());
-                // Will be handled by onError in client
-                responseObserver.onError(e);
+                throw new TwinhornException(TwinhornException.TwinhornErrorType.STREAMING_PROCESSING_ERROR, "Failed to init streaming", e);
             }
 
             // Client disconnection is handled by the client closing the stream

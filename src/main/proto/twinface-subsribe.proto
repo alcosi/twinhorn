@@ -31,6 +31,8 @@ enum UpdateStatus {
   INPUT_DATA_ERROR = 2;       // Client sent malformed/invalid data
   UNAUTHORIZED = 3;           // Token invalid or expired
   INTERNAL_ERROR = 4;         // Internal services (RabbitMQ, Introspect, Streaming) failed – generic for front-end
+  TRANSIENT_ERROR = 5;        // Temporary infrastructure error, retries in progress
+  UNAVAILABLE = 6;            // Service permanently unavailable after retries exhausted
 }
 
 enum TwinEventType {

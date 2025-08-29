@@ -1,4 +1,4 @@
-import com.google.protobuf.gradle.*
+import com.google.protobuf.gradle.id
 
 plugins {
     id("java")
@@ -44,6 +44,8 @@ dependencies {
     implementation("com.google.protobuf:protobuf-java:${protobufVersion}")    // For Java 9+ compatibility
     implementation("org.apache.tomcat:annotations-api:6.0.53")
     implementation("org.springframework.boot:spring-boot-starter-web") // For RestTemplate and @Value
+    // Resilience4j for circuit breaker
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
 }
 
 // gRPC/protobuf plugin
