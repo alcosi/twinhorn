@@ -3,14 +3,23 @@
 # ----------------------------
 # Build stage
 # ----------------------------
-FROM gradle:8.5-jdk17-alpine AS builder
 
+
+FROM gradle:8.5-jdk17 AS builder
 # Set working directory inside the container
 WORKDIR /home/gradle/src
+
+RUN apt-get update && apt-get install -y curl protobuf-compiler
+
+RUN curl -L -o /usr/local/bin/protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.76.0/protoc-gen-grpc-java-1.76.0-linux-x86_64.exe \
+    && chmod +x /usr/local/bin/protoc-gen-grpc-java
+
+ENV PATH="/usr/local/bin:$PATH"
 
 # Copy project files and set the correct owner (gradle user inside the image)
 COPY --chown=gradle:gradle . .
 
+RUN gradle clean
 # Build the project without running tests to speed up the image build
 RUN gradle build -x test
 

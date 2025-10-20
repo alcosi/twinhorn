@@ -1,4 +1,4 @@
-import com.google.protobuf.gradle.id
+ import com.google.protobuf.gradle.id
 
 plugins {
     id("java")
@@ -14,7 +14,7 @@ repositories {
     mavenCentral()
 }
 
-val grpcVersion = "1.63.0"
+val grpcVersion = "1.76.0"
 val protobufVersion = "4.28.2"
 
 dependencies {
@@ -42,6 +42,7 @@ dependencies {
     implementation("io.grpc:grpc-stub:${grpcVersion}")
     testImplementation("io.grpc:grpc-inprocess:${grpcVersion}")
     implementation("com.google.protobuf:protobuf-java:${protobufVersion}")    // For Java 9+ compatibility
+    implementation("io.grpc:protoc-gen-grpc-java:${grpcVersion}")
     implementation("org.apache.tomcat:annotations-api:6.0.53")
     implementation("org.springframework.boot:spring-boot-starter-web") // For RestTemplate and @Value
     // Resilience4j for circuit breaker
@@ -54,14 +55,15 @@ protobuf {
         artifact = "com.google.protobuf:protoc:$protobufVersion"
     }
     plugins {
-        id("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion"
+        id("grpc-java") {
+            path = "/usr/local/bin/protoc-gen-grpc-java"
         }
     }
+
     generateProtoTasks {
         all().forEach { task ->
             task.plugins {
-                id("grpc")
+                id("grpc-java")
             }
         }
     }
