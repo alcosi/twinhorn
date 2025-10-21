@@ -4,6 +4,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.twins.horn.service.auth.TwinsNotificationStatusUpdateService;
 import org.twins.horn.service.auth.TwinsTokenIntrospectService;
 import org.twins.horn.service.grpc.TwinfaceDataStreamingServer;
 import org.twins.horn.service.grpc.TwinfaceGrpcNotifier;
@@ -49,16 +50,16 @@ public class Application {
     }
 
     @Bean
-    public AuthInterceptor authInterceptor (TwinsTokenIntrospectService twinsTokenIntrospectService) {
+    public AuthInterceptor authInterceptor (TwinsTokenIntrospectService twinsTokenIntrospectService, TwinsNotificationStatusUpdateService twinsNotificationStatusUpdateService) {
         // Create the AuthInterceptor bean for gRPC authentication
-        return new AuthInterceptor(twinsTokenIntrospectService);
+        return new AuthInterceptor(twinsTokenIntrospectService, twinsNotificationStatusUpdateService);
     }
 
     @Bean
-    public TwinfaceDataStreamingServer twinfaceDataStreamingServer(                                                                  TwinsTokenIntrospectService introspectService) {
+    public TwinfaceDataStreamingServer twinfaceDataStreamingServer( TwinsTokenIntrospectService introspectService, TwinsNotificationStatusUpdateService notificationService) {
         // Build the gRPC server wrapper
         TwinfaceDataStreamingServer server = new TwinfaceDataStreamingServer(
-                authInterceptor(introspectService));
+                authInterceptor(introspectService, notificationService));
         try {
             server.start();
         } catch (IOException e) { //todo - handle properly

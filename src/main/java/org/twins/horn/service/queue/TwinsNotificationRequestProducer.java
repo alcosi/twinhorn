@@ -9,17 +9,17 @@ import org.twins.horn.notify.TwinsNotifyProto.InitializeNotificationRequest;
 public class TwinsNotificationRequestProducer {
     private static final String QUEUE_NAME = "twins-initialize-notify";
 
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
+  //  @Autowired
+  //  private RabbitTemplate rabbitTemplate;
 
     /**
      * Producer for InitializeNotificationRequest for RabbitMQ queue "twins-initialize-notify"
      * from twins-notification.proto.
      */
     public void sendInitializeNotification(String clientId) {
-        InitializeNotificationRequest request = InitializeNotificationRequest.newBuilder()
+     /*   InitializeNotificationRequest request = InitializeNotificationRequest.newBuilder()
                 .setClientId(clientId)
                 .build();
-        rabbitTemplate.convertAndSend(QUEUE_NAME, request.toByteArray());
+        rabbitTemplate.convertAndSend(QUEUE_NAME, request.toByteArray());*/
     }
 }

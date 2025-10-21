@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.twins.horn.exception.TwinhornException;
+import org.twins.horn.service.auth.TwinsNotificationStatusUpdateService;
 import org.twins.horn.service.auth.dto.TokenIntrospectRsDTOv1;
 import org.twins.horn.service.grpc.security.AuthInterceptor;
 import org.twins.horn.service.queue.TwinsNotificationsConsumer;
@@ -30,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * Responsibilities:
  * <ul>
- *   <li>Creates a {@link io.grpc.Server} on port {@code 9090} backed by a fixed thread pool.</li>
+ *   <li>Creates a {@link Server} on port {@code 9090} backed by a fixed thread pool.</li>
  *   <li>Publishes a {@link TwinfaceSubscribeServiceGrpc.TwinfaceSubscribeServiceImplBase}
  *       implementation that registers clients in {@link ConnectionRegistry} and pushes
  *       {@link TwinfaceSubscribeUpdate} messages to them.</li>
@@ -52,9 +53,31 @@ public class TwinfaceDataStreamingServer {
     @Value("${grpc.server.port:9090}")
     private int grpcServerPort;
 
+    /**
+     * Constructs a server instance using the port defined by {@code grpc.server.port}
+     * (default 9090). Use this constructor when the bean is managed by Spring so
+     * that {@link Value} injection works.
+     */
     public TwinfaceDataStreamingServer(AuthInterceptor authInterceptor) {
+        this(authInterceptor, null);
+    }
+
+
+    /**
+     * Constructs a server instance binding explicitly to {@code forcedPort}.
+     * Handy for integration tests where Spring context is not used and
+     * therefore the {@code @Value} field would otherwise stay un-initialised.
+     *
+     * @param authInterceptor authentication interceptor
+     * @param forcedPort      port to bind the gRPC server to, pass {@code null}
+     *                        to fall back on the configured property
+     */
+    public TwinfaceDataStreamingServer(AuthInterceptor authInterceptor, Integer forcedPort) {
         this.authInterceptor = authInterceptor;
         this.subscribeService = new TwinfaceSubscribeServiceImpl();
+        if (forcedPort != null) {
+            this.grpcServerPort = forcedPort;
+        }
     }
 
     public void start() throws IOException {
@@ -81,7 +104,6 @@ public class TwinfaceDataStreamingServer {
     }
 
     private static class TwinfaceSubscribeServiceImpl extends TwinfaceSubscribeServiceGrpc.TwinfaceSubscribeServiceImplBase {
-        private static final Logger logger = LoggerFactory.getLogger(TwinfaceSubscribeServiceImpl.class);
 
         @Override
         public void getDataUpdates(TwinfaceSubscribeRequest request,
@@ -89,14 +111,13 @@ public class TwinfaceDataStreamingServer {
             try {
                 // Register this client to receive notifications
                 TokenIntrospectRsDTOv1 tokenInfo = AuthInterceptor.TOKEN_INFO_CTX_KEY.get();
-                if (tokenInfo == null || tokenInfo.getActive() == null || !tokenInfo.getActive().equals("true")) {
+                if (tokenInfo == null ) {
                     log.error("Unauthorized access attempt to getDataUpdates");
                     throw new TwinhornException(TwinhornException.TwinhornErrorType.UNAUTHORIZED, "Failed to introspect token");
                 }
                 String clientId = tokenInfo.getClientId();
 
                 log.info("Starting data stream for client: {}", clientId);
-
                 // Register this client to receive notifications
                 ConnectionRegistry.add(clientId, responseObserver);
 

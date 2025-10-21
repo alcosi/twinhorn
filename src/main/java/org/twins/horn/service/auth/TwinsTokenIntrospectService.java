@@ -16,6 +16,8 @@ import org.twins.horn.exception.TwinhornException.TwinhornErrorType;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +25,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Service
 public class TwinsTokenIntrospectService {
+    public static final String HEADER_AUTH_TOKEN = "AuthToken";
+    public static final String HEADER_DOMAIN_ID = "DomainId";
+
     private final RestTemplate restTemplate = new RestTemplate(); //todo - correct initialization, use @Bean in config
     @Value("${twins.introspection.url}")
     private String introspectUrl;
@@ -44,22 +49,23 @@ public class TwinsTokenIntrospectService {
      * @param authToken raw access token (without the "Bearer " prefix)
      * @return the introspection result, or {@code null} when validation fails
      */
-    public TokenIntrospectRsDTOv1 validateToken(String authToken) throws TwinhornException {
+    public TokenIntrospectRsDTOv1 validateToken(String authToken, String domainId) throws TwinhornException {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            Map<String, String> body = new HashMap<>();
-            body.put("token", authToken);
-            HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
+            headers.set(HEADER_DOMAIN_ID, domainId);
+            headers.set(HEADER_AUTH_TOKEN, authToken);
 
-            ResponseEntity<TokenIntrospectRsDTOv1> response = restTemplate.postForEntity(introspectUrl, request, TokenIntrospectRsDTOv1.class);
+            ResponseEntity<TokenIntrospectRsDTOv1> response = restTemplate.getForEntity(introspectUrl, TokenIntrospectRsDTOv1.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 throw new TwinhornException(TwinhornErrorType.UNAUTHORIZED, "Invalid response from introspection service");
             }
             TokenIntrospectRsDTOv1 introspectRsDTOv1 = response.getBody();
             clientSessionService.saveClientSession(
                     UUID.fromString(introspectRsDTOv1.getClientId()),
-                    Instant.ofEpochSecond(introspectRsDTOv1.getExp()));
+                    introspectRsDTOv1.getTokenExpiryDate()!= null?
+                            Instant.ofEpochSecond(introspectRsDTOv1.getTokenExpiryDate())
+                    :Instant.now().plus(20, ChronoUnit.MINUTES));//todo - correct expiry handling
             return response.getBody();
         } catch (Exception e) {
             throw new TwinhornException(TwinhornErrorType.INTROSPECT_SERVICE_CONNECTION_ERROR, "Failed to introspect token", e);

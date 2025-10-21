@@ -4,6 +4,7 @@ import io.grpc.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.twins.horn.service.auth.TwinsNotificationStatusUpdateService;
 import org.twins.horn.service.auth.TwinsTokenIntrospectService;
 import org.twins.horn.service.auth.dto.TokenIntrospectRsDTOv1;
 import org.twins.horn.exception.TwinhornException;
@@ -34,7 +35,12 @@ public class AuthInterceptor implements ServerInterceptor {
     private static final Metadata.Key<String> AUTH_HEADER =
             Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER);
 
+    private static final Metadata.Key<String> DOMAIN_HEADER =
+            Metadata.Key.of("domainId", Metadata.ASCII_STRING_MARSHALLER);
+
     private final TwinsTokenIntrospectService twinsTokenIntrospectService;
+
+    private final TwinsNotificationStatusUpdateService notificationStatusUpdateService;
 
     // Default constructor removed – use Lombok-generated constructor for dependency injection
 
@@ -43,7 +49,8 @@ public class AuthInterceptor implements ServerInterceptor {
                                                                  Metadata headers,
                                                                  ServerCallHandler<ReqT, RespT> next) {
         String authHeader = headers.get(AUTH_HEADER);
-        if (authHeader == null || !authHeader.toLowerCase().startsWith("bearer ")) {
+        String domainId = headers.get(DOMAIN_HEADER);
+        if (authHeader == null || domainId == null || !authHeader.toLowerCase().startsWith("bearer ")) {
             log.error("Authentication failed: missing or invalid Authorization header");
             call.close(Status.UNAUTHENTICATED.withDescription("Missing bearer token"), new Metadata());
             return new ServerCall.Listener<>() {
@@ -52,8 +59,9 @@ public class AuthInterceptor implements ServerInterceptor {
         String token = authHeader.substring(7);
         TokenIntrospectRsDTOv1 introspectRsDTOv1;
         try {
-            introspectRsDTOv1 = twinsTokenIntrospectService.validateToken(token);
+            introspectRsDTOv1 = twinsTokenIntrospectService.validateToken(token, domainId);
             log.info("Authentication succeeded for clientId={}", introspectRsDTOv1.getClientId());
+            notificationStatusUpdateService.updateSubscriptionStatus(domainId, token, true);
         } catch (TwinhornException e) {
             log.error("Authentication failed: {}", e.getMessage());
             call.close(Status.UNAUTHENTICATED.withDescription("Invalid token"), new Metadata());
