@@ -65,7 +65,7 @@ public class TwinsNotificationStatusUpdateService {
             headers.set(HEADER_AUTH_TOKEN, authToken);
 
             String action = (needStart ? SubscriptionAction.init : SubscriptionAction.stop).name();
-            String requestUrl = UriComponentsBuilder.fromHttpUrl(updateStatusUrl)
+            String requestUrl = UriComponentsBuilder.fromUriString(updateStatusUrl)
                     .queryParam("subscriptionAction", action)
                     .toUriString();
 
